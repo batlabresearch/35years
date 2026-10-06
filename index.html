@@ -335,6 +335,20 @@ button.mm{align-items:flex-start;gap:0;line-height:1.35}
 .acts.three{grid-template-columns:repeat(3,minmax(0,1fr))}
 .acts.three .act span{font-size:13px}
 @media (max-width:360px){.acts{grid-template-columns:repeat(2,minmax(0,1fr))}.acts.three{grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* 조각을 누를 수 있다는 표시 */
+.stripbtn{display:flex;align-items:center;gap:8px;width:100%;padding:4px 8px 4px 5px;border:1px dashed var(--seam);border-radius:8px;background:var(--paper)}
+.stripbtn .strip{flex:1;width:auto;border:0;padding:0;background:none;border-radius:0}
+.strip-go,.tap-go{font-size:11px;font-weight:700;color:var(--accent);white-space:nowrap}
+.sewn.tap{width:100%;text-align:left;border:1.5px solid var(--tint-c-line);border-radius:10px;padding:8px 10px;background:var(--tint-c)}
+.sewn.tap:hover{border-color:var(--accent)}
+.sewn-t{display:flex;flex-direction:column;gap:2px;min-width:0}
+.sewn-t b{font-weight:700}
+.sewn-t .small{font-size:12px;color:var(--ink2)}
+.callout{font-size:13px;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:8px;padding:6px 10px}
+.quilt.tapq button.pt{cursor:pointer;outline:1px solid transparent}
+.quilt.tapq button.pt:hover,.quilt.tapq button.pt:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.prof{display:flex;flex-direction:column;gap:8px;border-top:1px dashed var(--seam);padding-top:10px}
+.panel>.prof:first-child{border-top:0;padding-top:0}
 /* aspect-ratio를 모르는 예전 Safari(iOS 14 이하)에서 조각이 납작해지지 않게 */
 @supports not (aspect-ratio:1){.quilt .pt,.swatch .pt{height:22px}.sewn .pt{height:30px}}
 input{border-radius:12px;-webkit-appearance:none;appearance:none}
@@ -568,6 +582,7 @@ function saveMeta(){try{localStorage.setItem(MK,JSON.stringify(META))}catch(e){}
 /* 예전 판에서 저장한 기록에 새로 생긴 항목을 채운다 */
 function migrate(s){
   s.sty=s.sty||{warm:0,cold:0,free:0,push:0,firm:0};
+  s.pf=s.pf||{n:0,sta:0,mind:0,couple:0,staLow:0,coupleLow:0,cards:0,ask:0,askOk:0,force:0,support:0,paid:0};
   s.fl=s.fl||{};
   (s.kids||[]).forEach(k=>{
     if(k.wz==null)k.wz=k.hz*.6;if(k.cz==null)k.cz=0;
@@ -1621,7 +1636,7 @@ ECHO.night_call={t:'끊지 않고 들어 준 새벽',by:k=>({d:'{N}가 문득 �
 ECHO.far={t:'"묻지 말고 가라"',by:k=>({d:'화면 속에서 {N}가 손을 흔듭니다. 뒤로 낯선 도시의 창밖이 보입니다.',say:'여기 오길 잘했어요. 가끔 외롭긴 한데, 가라고 해 줬던 말을 떠올리면 힘이 나요. 다음 달에 휴가 내서 갈게요.',e:{bond:3,mind:3},m:'joy'})};
 
 function newGame(role){
-  S={v:2,role,turn:0,t:0,kids:[],seeds:[],arcs:[],arcN:0,unl:{},fl:{},hist:[],acts:[],cur:{phase:'family'},birthDue:null,needCare:null,plan:null,noMore:0,preg:0,led:null,focus:0,sty:{warm:0,cold:0,free:0,push:0,firm:0}};
+  S={v:2,role,turn:0,t:0,kids:[],seeds:[],arcs:[],arcN:0,unl:{},fl:{},hist:[],acts:[],cur:{phase:'family'},birthDue:null,needCare:null,plan:null,noMore:0,preg:0,led:null,focus:0,sty:{warm:0,cold:0,free:0,push:0,firm:0},pf:{n:0,sta:0,mind:0,couple:0,staLow:0,coupleLow:0,cards:0,ask:0,askOk:0,force:0,support:0,paid:0}};
   newFamily(role);
 }
 function addBaby(){const k=newKid(S.kids.length+1);S.kids.push(k);S.cur={phase:'birth',kid:k.id};save()}
@@ -1847,6 +1862,11 @@ function choose(i){
   if(ch.ask){asked=R()<askP(k);out=asked?ch.ok:ch.no}
   if(out!==ch){applyE(ch.e,k);sty(ch.e)}
   applyE(out.e,k);sty(out.e);
+  if(card.kind==='ev'&&!card.ev.par){
+    const pf=S.pf;pf.cards++;
+    if(ch.ask){pf.ask++;if(asked)pf.askOk++}
+    [ch.e,out!==ch?out.e:null].forEach(e=>{if(!e)return;if(e.aut<=-2&&e.bond<=-2)pf.force++;if(e.aut>=3)pf.support++;if(e.money<0)pf.paid-=e.money});
+  }
   if(out!==ch&&ch.fn)ch.fn(k);
   if(out.fn)out.fn(k);
   [ch.f,out!==ch?out.f:null].forEach(f=>{if(!f)return;if(typeof f==='string')k.fl[f]=1;else Object.assign(k.fl,f)});
@@ -1954,6 +1974,7 @@ function wrap(){
   const c=S.cur;c.patches={};
   c.tk.forEach(id=>{const k=kidById(id);passive(k);c.patches[id]=makePatch(k);patternSeeds(k)});
   parentPassive();
+  {const pf=S.pf,pp=S.par;pf.n++;pf.sta+=pp.sta;pf.mind+=pp.mind;pf.couple+=pp.couple;if(pp.sta<35)pf.staLow++;if(pp.couple<35)pf.coupleLow++}
   const lg=ledger();S.led=lg;S.par.money=Math.round(S.par.money+lg.net*c.step);
   S.kids.forEach(k=>{if(!k.done)k.cost+=kidCost(k)*c.step});
   /* 빌릴 수 있는 돈에는 한도가 있다 */
@@ -2071,6 +2092,39 @@ function parentStyle(){
   if(a>=.6)return['한 발 떨어져 지켜보는 부모','아이의 일은 아이에게 맡겼습니다. 아이는 일찍 제 몫을 하게 됐고, 가끔은 더 가까이 와 주기를 바랐습니다.'];
   return['엄하게 끌고 가는 부모','아이가 넘어지지 않도록 앞에서 끌었습니다. 아이는 그 뜻을 뒤늦게 이해했고, 그때는 숨이 찼습니다.'];
 }
+/* 선택으로 본 나: 여력을 어디에 썼는지, 무엇을 뒤로 미뤘는지, 갈림길에서 어떻게 골랐는지, 돈을 어떻게 썼는지 */
+const ACT_CAT={skin:'bond',play:'bond',listen:'bond',meal:'bond',interest:'bond',call:'bond',cook:'bond',video:'bond',sib:'bond',give:'bond',
+  talk:'grow',tummy:'grow',read:'grow',letters:'grow',class:'grow',study:'grow',tutor:'grow',alone:'free',wait:'free',walk:'fun',out:'fun',trip:'fun',sport:'fun',
+  rest:'rest',couple:'couple',work:'work',retire:'retire'};
+function playerProfile(){
+  const n={bond:0,grow:0,free:0,fun:0,rest:0,couple:0,work:0,retire:0};
+  S.kids.forEach(k=>{for(const id in k.ac){const c=ACT_CAT[id];if(c)n[c]+=k.ac[id]}});
+  const kid=n.bond+n.grow+n.free+n.fun,all=kid+n.rest+n.couple+n.work+n.retire||1,pc=x=>Math.round(x/all*100);
+  const p=S.par,pf=S.pf,y=S.sty,L=[],kidP=pc(kid),restP=pc(n.rest),coupleP=pc(n.couple),workP=pc(n.work);
+  /* 1. 어디에 힘을 썼나 */
+  const top=['bond','grow','free','fun'].sort((a,b)=>n[b]-n[a])[0];
+  const how={bond:'아이와 살을 맞대고 이야기를 들어 주는 일',grow:'아이의 발달과 공부를 챙기는 일',free:'아이가 스스로 해 보도록 기다려 주는 일',fun:'아이와 밖으로 나가 함께 노는 일'}[top];
+  const type=kidP>=75?'아이에게 거의 모든 것을 쏟는 헌신형':workP>=20?'일과 육아를 함께 끌고 간 병행형':restP+coupleP>=35?'나와 부부의 삶도 함께 지킨 균형형':'아이를 앞세우되 내 몫도 조금은 챙긴 절충형';
+  L.push(`당신은 ${type} 부모였습니다. 고른 일의 ${kidP}%가 아이와 함께하는 일이었고, 그 가운데 ${how}을 가장 자주 골랐습니다.`);
+  /* 2. 무엇을 뒤로 미뤘나 */
+  const noRest=restP<12,noCouple=coupleP<8,avgSta=pf.n?Math.round(pf.sta/pf.n):Math.round(p.sta);
+  if(noRest||noCouple){
+    let t='대신 '+(noRest&&noCouple?'내 체력과 부부만의 시간은':noRest?'내 체력은':'부부만의 시간은')+' 늘 뒤로 밀렸습니다.';
+    if(noRest)t+=` 쉬는 일을 고른 것은 ${n.rest}번이고`+(pf.n>=10?`, ${pf.n}턴 가운데 ${pf.staLow}턴을 체력이 바닥난 채로 보냈습니다.`:', 체력은 자주 바닥을 쳤습니다.');
+    if(noCouple)t+=` 부부만의 시간은 ${n.couple}번 골랐고, 부부 사이는 마지막에 ${Math.round(p.couple)}점이었습니다.`;
+    L.push(t);
+  }else L.push(`그러면서도 내 몫을 놓지 않았습니다. 쉬는 일을 ${n.rest}번, 부부만의 시간을 ${n.couple}번 골랐습니다. 내 체력은 평균 ${avgSta}점, 부부 사이는 마지막에 ${Math.round(p.couple)}점이었습니다.`);
+  /* 3. 갈림길에서 어떻게 골랐나 */
+  const r=y.warm/(y.warm+y.cold+1),a=y.free/(y.free+y.push+1);
+  L.push((a>=.6?'갈림길에서는 대체로 아이의 뜻을 따랐습니다.':a<.4?'갈림길에서는 내 판단을 앞세우는 편이었습니다.':'갈림길에서는 아이의 뜻과 내 판단 사이를 오갔습니다.')
+    +(r>=.82?' 혼내기보다 먼저 안아 주고 들어 주는 쪽을 골랐습니다.':r<.62?' 달래기보다 바로잡는 쪽을 자주 골랐습니다.':' 안아 줄 때와 바로잡을 때를 나눠 썼습니다.')
+    +(pf.cards>=15?` 아이가 정하게 둔 선택이 ${pf.support}번, 권유가 ${pf.ask}번, 밀어붙인 선택이 ${pf.force}번이었습니다.`:''));
+  /* 4. 돈과 내 앞날 */
+  const edu=Math.max.apply(null,S.kids.map(k=>k.fl.edu==null?1:k.fl.edu)),eng=S.kids.some(k=>(k.fl.pre||0)>=150)||S.seeds.some(s=>s.id==='engkinder'),nest=p.money+p.retire;
+  L.push((eng||edu===2||pf.paid>=4000?'돈은 아이에게 아끼지 않는 편이었습니다. 교육과 큰 지출에서 비싼 쪽을 여러 번 골랐습니다.':edu===0&&pf.paid<1500?'돈보다 시간을 주는 쪽이었습니다. 학원과 큰 지출에는 신중했습니다.':'돈은 남들 하는 만큼 썼습니다. 교육도 큰 지출도 가운데쯤을 골랐습니다.')
+    +(n.retire>=3?` 내 노후도 챙겨 ${n.retire}번 따로 떼어 두었고`:n.retire?` 내 노후를 위해 떼어 둔 것은 ${n.retire}번뿐이고`:' 내 노후를 위해 따로 떼어 둔 돈은 없고')+`, 지금 손에 남은 돈은 ${won(nest)}입니다.`);
+  return{lines:L,slots:[['아이와 함께',kid],['내 쉼',n.rest],['부부',n.couple],['일',n.work],['노후 준비',n.retire]],kid:[['유대',n.bond],['발달·공부',n.grow],['스스로 하게',n.free],['함께 놀기',n.fun]]};
+}
 function endingOf(k){
   const s=k.st,l=k.life||{},n=Math.max(1,k.quilt.length),cnt={joy:0,warm:0,sad:0,upset:0};
   k.quilt.forEach(p=>{cnt[p.e[0]]++});
@@ -2085,7 +2139,7 @@ function endingOf(k){
   const facts=[['키',k.h+'cm'],['학교',l.major==='voc'?'고등학교 졸업'+(k.fl.hs?' ('+k.fl.hs+')':''):M?M.n+' 계열'+(l.grad?' 졸업':' 재학'):''],['일',l.job?l.job+' · 세후 월 '+l.pay+'만원':'일자리를 찾는 중'],['사는 곳',l.far?'먼 도시':l.indep?'따로 나가 삶':'부모와 함께 삶'],['가족',l.love===2?(l.baby?'결혼, 아이 하나':'결혼'):l.love===1?'만나는 사람이 있음':k.fl.single?'혼자 살기로 함':'혼자'],['요즘 취미',l.hobby||'찾는 중']].filter(x=>x[1]);
   return{title,ax:[['자립',w[i]],['행복',w[T(happy)]],['우리 사이',['멀지만 이어짐','편안함','깊음'][r]]],letter:letterOf(k,r),
     rep:{bars:[['우리 사이(신뢰)',rel],['자존감',Math.round(s.est)],['자율성',Math.round(s.aut)],['끈기',Math.round(s.grit)],['사회성',Math.round(s.soc)],['건강',Math.round(s.hp)],['배움',Math.round(s.cog)],['표현력',Math.round(s.lang)],['운동 능력',Math.round(s.phy)]],comp:[['자립',indep],['행복',happy]],
-      cnt,facts,top,over:k.over.slice(),style:parentStyle(),cost:Math.round(k.cost),seeds:S.seeds.filter(x=>x.kid===k.id).length,back:S.seeds.filter(x=>x.kid===k.id&&x.done).length,photos:MOMENTS.filter(m=>k.mo[m.id]!=null).length}};
+      cnt,facts,top,over:k.over.slice(),style:parentStyle(),me:playerProfile(),cost:Math.round(k.cost),seeds:S.seeds.filter(x=>x.kid===k.id).length,back:S.seeds.filter(x=>x.kid===k.id&&x.done).length,photos:MOMENTS.filter(m=>k.mo[m.id]!=null).length}};
 }
 function letterOf(k,r){
   const l=k.life||{},P=[],p=S.role,baby=k.quilt.filter(q=>q.a<36),warm=baby.filter(q=>q.e.includes('warm')||q.e[0]==='joy').length;
@@ -2216,7 +2270,7 @@ function vGame(){
     +(u.money?'<button class="tool" data-a="ledger" data-tip="들어오는 돈과 나가는 돈, 정부 지원을 봅니다.">가계부</button>':'')
     +'<button class="tool" data-a="help" data-tip="놀이 방법과 자료 출처, 처음 화면으로 가기.">도움말</button></div></header>';
   if(live.length>1)h+='<div class="tabs">'+live.map(k=>`<button class="tab${k===fk?' on':''}" data-a="focus" data-v="${S.kids.indexOf(k)}">${esc(k.name)}</button>`).join('')+'</div>';
-  if(u.quilt)h+=`<button class="strip" data-a="quilt" data-v="${fk.id}" aria-label="마음 조각보 열기" data-tip="${esc(fk.name)}의 마음 조각보입니다. 누르면 전체가 펼쳐집니다.">${stripHTML(fk,c.phase==='wrap')}</button>`;
+  if(u.quilt)h+=`<button class="stripbtn" data-a="quilt" data-v="${fk.id}" aria-label="마음 조각보 펼쳐 보기" data-tip="${esc(fk.name)}의 마음 조각보입니다. 누르면 전체가 펼쳐지고, 조각을 하나씩 누르면 그날의 마음과 사진이 나옵니다."><span class="strip">${stripHTML(fk,c.phase==='wrap')}</span><span class="strip-go">펼쳐 보기 ›</span></button>`;
   const echo=c.phase==='card'&&c.q[c.qi].echo!=null,pgK=c.phase==='intro'&&c.pages&&(c.pg||0)<c.pages.length?c.pages[c.pg||0].k:'';
   h+=parentHTML()+(echo||pgK==='photo'||pgK==='chk'?'':stageHTML(fk));
   return h+`<section id="panel" class="panel${echo?' echo':''}">${{intro:pIntro,card:pCard,res:pRes,wrap:pWrap}[c.phase]()}</section>`;
@@ -2291,7 +2345,7 @@ function pWrap(){
   const c=S.cur,s=c.step,lg=S.led,unit=s===1?'이번 달':s===6?'지난 반 년':'지난 한 해';
   let h=`<div class="eyebrow">${s===1?'한 달이':s===6?'반 년이':'한 해가'} 지났습니다</div>`;
   if(S.unl.quilt)c.tk.forEach(id=>{const k=kidById(id),p=c.patches[id];
-    h+=`<div class="sewn"><span class="${ptClass(p)} new"></span><div>${p.hid?`<b>${unit} ${esc(k.name)}의 마음 조각은 색이 보이지 않습니다</b><div class="small">아이가 마음을 말해 주지 않았습니다.</div>`:`<b>${unit} ${esc(k.name)}의 마음 조각: ${p.e.map(e=>EMO[e].n).join('과 ')}</b><div class="say-s${p.a>=36&&p.a<156?' kid':''}">${p.a<36?'':'“'}${esc(p.w)}${p.a<36?'':'”'}</div>${p.a<36?'<div class="small">아직 기억에 남지 않는 나이입니다. 그래도 이런 날들이 마음의 바탕이 됩니다.</div>':''}`}</div></div>`});
+    h+=`<button class="sewn tap" data-a="patch" data-v="${k.id}:${k.quilt.length-1}"><span class="${ptClass(p)} new"></span><span class="sewn-t">${p.hid?`<b>${unit} ${esc(k.name)}의 마음 조각은 색이 보이지 않습니다</b><span class="small">아이가 마음을 말해 주지 않았습니다.</span>`:`<b>${unit} ${esc(k.name)}의 마음 조각: ${p.e.map(e=>EMO[e].n).join('과 ')}</b><span class="say-s${p.a>=36&&p.a<156?' kid':''}">${p.a<36?'':'“'}${esc(p.w)}${p.a<36?'':'”'}</span>${p.a<36?'<span class="small">아직 기억에 남지 않는 나이입니다. 그래도 이런 날들이 마음의 바탕이 됩니다.</span>':''}`}<span class="tap-go">${p.ph&&p.ph.length?'사진이 붙었습니다. 눌러서 보기 ›':'눌러서 자세히 보기 ›'}</span></span></button>`});
   if(S.unl.money&&lg){const i=tot(lg.inc)+tot(lg.sup),e=tot(lg.exp);h+=`<p class="small">${s===1?'이번 달':'한 달 평균'} 살림: 들어온 돈 ${won(i)} − 나간 돈 ${won(e)} = <b style="color:var(--${lg.net>=0?'good':'bad'})">${lg.net>=0?'+':'−'}${won(Math.abs(lg.net))}</b>${s>1?' ('+stepWord(s)+' 동안 '+(lg.net>=0?'+':'−')+won(Math.abs(lg.net*s))+')':''} · 모은 돈 ${won(S.par.money)}</p>`}
   if(c.note)h+=`<p class="small" style="color:var(--bad)">${esc(c.note)}</p>`;
   return h+`<p class="tease">${esc(c.tease)}</p><button class="btn stick" data-a="adv">${s===1?'다음 달로':s===6?'반 년 뒤로':'다음 해로'}</button>`;
@@ -2307,22 +2361,31 @@ function vLetter(){
     h+=`<div class="panel"><div class="eyebrow">성장 기록표</div><h2>${esc(k.name)}는 이런 사람으로 자랐습니다</h2>
     ${bars(rp.comp)}<p class="small">자립은 자율성과 끈기, 일과 살림을 합친 것이고, 행복은 자존감과 사람 사이, 건강, 조각보의 색을 합친 것입니다.</p>
     ${bars(rp.bars)}<p class="small">자존감, 자율성, 끈기는 키우는 동안에는 보이지 않던 숫자입니다. 50이 또래 평균입니다. 정답이 있는 점수가 아니고, 서른다섯 해가 지나간 자리의 모양입니다.</p></div>
-    <div class="panel"><div class="eyebrow">${esc(k.name)}의 마음 조각보 · 완성</div><div class="quilt">${quiltHTML(k,true)}</div>
+    <div class="panel"><div class="eyebrow">${esc(k.name)}의 마음 조각보 · 완성</div><p class="callout">조각을 하나씩 눌러 보세요. 그날 ${esc(NN(k))}의 마음과 사진이 나옵니다.</p><div class="quilt tapq">${quiltHTML(k,true)}</div>
     <div class="emobar">${Object.keys(cn).map(x=>cn[x]?`<span style="flex:${cn[x]};background:var(--${x})" data-tip="${EMO[x].n} ${cn[x]}조각"></span>`:'').join('')}</div>
     <div class="legend">${Object.keys(cn).map(x=>`<span><i style="background:var(--${x})"></i>${EMO[x].n} ${cn[x]}조각 (${Math.round(cn[x]/n*100)}%)</span>`).join('')}</div>
     <p class="small">${was?`사춘기에 끝내 듣지 못했던 조각 ${was}개가 이제 열렸습니다. `:''}조각을 누르면 그때의 사진과 마음이 보입니다. 사진이 붙은 조각 ${rp.photos}개. 이 조각보는 보관함에 걸렸습니다.</p></div>
-    <div class="panel"><div class="eyebrow">${S.role}로서의 나</div><h2>${esc(rp.style[0])}</h2><p>${esc(rp.style[1])}</p>
+    <div class="panel"><div class="eyebrow">${S.role}로서의 나</div><h2>${esc(rp.style[0])}</h2><p>${esc(rp.style[1])}</p>${profileHTML(rp.me)}
     <dl class="facts">${rp.top.length?`<dt>가장 많이 한 일</dt><dd>${rp.top.map(esc).join('<br>')}</dd>`:''}
     <dt>심은 선택</dt><dd>${rp.seeds}개 가운데 ${rp.back}개가 돌아왔습니다</dd>
     <dt>함께 넘은 고비</dt><dd>${rp.over.length?rp.over.map(esc).join(', '):'큰 고비 없이 지나왔습니다'}</dd>
     <dt>${esc(k.name)}에게 쓴 돈</dt><dd>${won(rp.cost)} (서른다섯 해 동안의 양육비와 교육비)</dd></dl>
     <p class="small">발달심리학자 바움린드는 양육을 따뜻함과 통제라는 두 축으로 나눠 봤습니다. 위의 이름은 서른다섯 해 동안의 선택이 그 두 축에서 어디쯤 놓였는지를 말해 줍니다.</p></div>`;
-  }else h+=`<div class="panel"><div class="eyebrow">${esc(k.name)}의 마음 조각보 · 완성</div><div class="quilt">${quiltHTML(k,true)}</div>${LEGEND}</div>`;
+  }else h+=`<div class="panel"><div class="eyebrow">${esc(k.name)}의 마음 조각보 · 완성</div><p class="callout">조각을 하나씩 눌러 보세요. 그날의 마음과 사진이 나옵니다.</p><div class="quilt tapq">${quiltHTML(k,true)}</div>${LEGEND}</div>`;
   h+=(hist.length?`<div class="panel"><div class="eyebrow">큰 갈림길에서 내가 고른 것</div><ul class="recap">${hist.map(x=>`<li><span>${ageLabel(x.a)}</span><span>${esc(x.t)}: ${esc(x.c)}</span></li>`).join('')}</ul></div>`:'')
   +`<div class="panel"><div class="eyebrow">사진</div><p>이번에 만난 순간 ${met.length}개, 아직 못 만난 순간 ${miss.length}개.</p>
   ${miss.length?`<p class="small">못 만난 순간의 실마리</p><div class="hints">${miss.map(m=>`<span>${esc(fmt(m.hint,k))}</span>`).join('')}</div>`:''}</div>
   <button class="btn" data-a="letterNext">${activeKids().length?'남은 아이의 시간으로':'부모의 서른다섯 해 보기'}</button>`;
   return h;
+}
+/* 선택으로 본 나: 서너 줄의 분석과, 여력을 어디에 썼는지 보여 주는 띠 */
+function profileHTML(me){
+  if(!me)return'';
+  const col=['accent','good','bad','ink3','seam'],tot=me.slots.reduce((x,y)=>x+y[1],0)||1,kt=me.kid.reduce((x,y)=>x+y[1],0)||1;
+  return`<div class="prof"><div class="eyebrow">선택으로 본 나</div>${me.lines.map(s=>`<p>${esc(s)}</p>`).join('')}
+  <div class="emobar">${me.slots.map((s,i)=>s[1]?`<span style="flex:${s[1]};background:var(--${col[i]})"></span>`:'').join('')}</div>
+  <div class="legend">${me.slots.map((s,i)=>`<span><i style="background:var(--${col[i]})"></i>${s[0]} ${Math.round(s[1]/tot*100)}%</span>`).join('')}</div>
+  <p class="small">여력을 어디에 썼는지 나눈 것입니다. 아이와 함께한 일은 ${me.kid.map(x=>x[0]+' '+Math.round(x[1]/kt*100)+'%').join(', ')}였습니다.</p></div>`;
 }
 function vEnd(){
   const p=S.par,nest=p.money+p.retire,a=ageOf(S.me);
@@ -2333,6 +2396,7 @@ function vEnd(){
   <dt>일</dt><dd>${p.career>=65?'일에서도 내 자리를 지켰습니다.':p.career>=40?'일과 육아 사이에서 조금씩 내주고 조금씩 지켰습니다.':'일에서는 많이 내려놓았습니다. 그 시간은 아이 곁에 있었습니다.'}</dd>
   <dt>건강</dt><dd>${p.sta>=55?'아직 손주를 번쩍 안을 수 있습니다.':'무릎이 예전 같지 않습니다.'}</dd>
   <dt>아이들에게 쓴 돈</dt><dd>${won(S.kids.reduce((x,k)=>x+(k.cost||0),0))}</dd></dl></div>
+  <div class="panel">${profileHTML(playerProfile())}</div>
   <div class="panel"><div class="eyebrow">아이들</div>${S.kids.map(k=>`<div class="sewn"><div>${kidSVG(k,420,'happy',70)}</div><div><b>${esc(k.name)}</b> · ${esc(k.end.title)}<div class="small">${esc(lifeSummary(k))}</div></div></div>`).join('')}
   <p class="small">${S.turn}턴 동안 선택 ${S.seeds.length}개를 심었고, 그 가운데 ${S.seeds.filter(s=>s.done).length}개가 돌아왔습니다.</p></div>
   <div class="chs"><button class="btn" data-a="new">다른 가족으로 새로 시작하기</button><button class="gbtn" data-a="gallery">조각보 보관함</button><button class="gbtn" data-a="home">처음 화면</button></div>`;
@@ -2358,7 +2422,7 @@ function showPops(){
 }
 function mQuilt(id){
   const k=kidById(id),ph=k.quilt.filter(p=>p.ph&&p.ph.length).length;
-  openModal(`<div class="eyebrow">마음 조각보</div><h2>${esc(k.name)}의 ${k.quilt.length}조각</h2><div class="quilt">${quiltHTML(k,true)}</div>${LEGEND}
+  openModal(`<div class="eyebrow">마음 조각보</div><h2>${esc(k.name)}의 ${k.quilt.length}조각</h2><p class="callout">조각을 하나 눌러 보세요. 그날 ${esc(NN(k))}의 마음과 사진이 나옵니다.</p><div class="quilt tapq">${quiltHTML(k,true)}</div>${LEGEND}
   <p class="small">옅은 조각은 세 돌 전, 두 색 조각은 섞인 기억, 동그란 표시는 사진이 붙은 조각, 물음표는 아이가 말해 주지 않은 마음입니다. 조각을 누르면 자세히 볼 수 있습니다. 지금까지 사진 ${ph}장.</p>`);
 }
 function mPatch(v){
